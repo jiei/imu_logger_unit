@@ -62,7 +62,7 @@ Lpme1_Data lpme1Data;
 TIM_OC_InitTypeDef ConfigOC_Speaker;
 _Bool logger_flag=0;
 int counter=0;
-const int counter_th=100;	//100 * 0.05 = 5[s] logging
+const int counter_th=400;	//400 * 0.1 = 40[s] logging
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -201,8 +201,9 @@ void setup(){
 
 	HAL_Delay(300);
 	printf("Timestamp,Yaw Angle,Yaw Speed\r\n");
-	if(HAL_TIM_Base_Start_IT(&htim2) != HAL_OK){
-		Error_Handler();
+	HAL_Delay(100);
+	while(HAL_TIM_Base_Start_IT(&htim2) != HAL_OK) {
+		HAL_Delay(100);
 	}
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
 
@@ -247,6 +248,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		  logger_flag=0;
 	  }
   }
+  HAL_TIM_Base_Start_IT(&htim2);
 }
 /* USER CODE END 4 */
 
