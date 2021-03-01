@@ -60,9 +60,9 @@
 Lpme1_Data lpme1Data;
 
 TIM_OC_InitTypeDef ConfigOC_Speaker;
-_Bool logger_flag=0;
+_Bool logger_flag=0, ready_flag=1;
 int counter=0;
-const int counter_th=400;	//400 * 0.1 = 40[s] logging
+const int counter_th=2000;	//2000 * 0.01 = 20[s] logging
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -158,32 +158,34 @@ void SystemClock_Config(void)
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_I2C1;
-  PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK1;
-  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
+  PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_SYSCLK;
+  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_SYSCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -200,10 +202,14 @@ void setup(){
 	ConfigOC_Speaker.OCNIdleState = TIM_OCNIDLESTATE_RESET;
 
 	HAL_Delay(300);
-	printf("Timestamp,Yaw Angle,Yaw Speed\r\n");
+	printf("Timestamp,Roll Speed,Pitch Speed,Yaw Speed\r\n");
 	HAL_Delay(100);
-	while(HAL_TIM_Base_Start_IT(&htim2) != HAL_OK) {
+	while(1) {
+		if(lpme1_set_Freq(LPMS_DATA_FREQ_200HZ) != LPME1_OK) ready_flag=0;
+		if(HAL_TIM_Base_Start_IT(&htim2) != HAL_OK) ready_flag=0;
 		HAL_Delay(100);
+		if(ready_flag == 1) break;
+		ready_flag = 1;
 	}
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
 
@@ -216,6 +222,7 @@ void setup(){
 	}
 }
 
+//buzzer control
 void speaker_output(float duty){
 	if(duty>0){
 		ConfigOC_Speaker.Pulse=(int)(duty*htim3.Init.Period);
@@ -237,11 +244,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	  //lpme1_get_acc(lpme1Data.acc);
 	  lpme1_get_gyr(lpme1Data.gyr);
 	  //lpme1_get_mag(lpme1Data.mag);
-	  lpme1_get_euler(lpme1Data.euler);
+	  //lpme1_get_euler(lpme1Data.euler);
 	  //lpme1_get_quat(lpme1Data.quat);
 
+	  //Data transmit to logger
 	  if(logger_flag==1){
-		  printf("%.3f,%f,%.3f\r\n", lpme1Data.time, lpme1Data.euler[2], lpme1Data.gyr[2]);
+		  //printf("%.3f,%f,%.3f\r\n", lpme1Data.time, lpme1Data.euler[2], lpme1Data.gyr[2]);
+		  printf("%.3f,%3f,%.3f,%.3f\r\n", lpme1Data.time, lpme1Data.gyr[0], lpme1Data.gyr[1], lpme1Data.gyr[2]);
 		  counter++;
 	  }
 	  if(counter>counter_th){
@@ -273,7 +282,7 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */

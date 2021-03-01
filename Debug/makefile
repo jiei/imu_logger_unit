@@ -15,6 +15,12 @@ RM := rm -rf
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(strip $(S_DEPS)),)
+-include $(S_DEPS)
+endif
+ifneq ($(strip $(S_UPPER_DEPS)),)
+-include $(S_UPPER_DEPS)
+endif
 ifneq ($(strip $(C_DEPS)),)
 -include $(C_DEPS)
 endif
@@ -40,8 +46,8 @@ imu_logger_unit.bin \
 all: imu_logger_unit.elf secondary-outputs
 
 # Tool invocations
-imu_logger_unit.elf: $(OBJS) $(USER_OBJS) /home/jack/STM32CubeIDE/workspace_1.3.0/imu_logger_unit/STM32F303K8TX_FLASH.ld
-	arm-none-eabi-gcc -o "imu_logger_unit.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/jack/STM32CubeIDE/workspace_1.3.0/imu_logger_unit/STM32F303K8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="imu_logger_unit.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
+imu_logger_unit.elf: $(OBJS) $(USER_OBJS) /home/jack/STM32CubeIDE/workspace_1.4.0/imu_logger_unit/STM32F303K8TX_FLASH.ld
+	arm-none-eabi-gcc -o "imu_logger_unit.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/jack/STM32CubeIDE/workspace_1.4.0/imu_logger_unit/STM32F303K8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="imu_logger_unit.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
